@@ -1,0 +1,38 @@
+Bootstrap: localimage
+From: NB_base.sif
+
+%arguments
+
+
+%files
+
+
+%post
+    apt -y update
+    apt -y install subversion
+    apt -y upgrade
+    apt -y autopurge
+
+    cd /opt
+
+    cd gibuu-build/release
+    make  withROOT=1 -j$(grep "processor" /proc/cpuinfo | sort | uniq | wc -l)
+
+
+    cd /opt/nuwro
+    make -j$(grep "processor" /proc/cpuinfo | sort | uniq | wc -l)
+
+    cd /opt/Reweight
+    export GENIE_REWEIGHT=/opt/Reweight
+    make -j$(grep "processor" /proc/cpuinfo | sort | uniq | wc -l)
+
+%labels
+ 
+    
+
+%environment
+    export PATH=$PATH:/opt/nuwro/bin:/opt/gibuu-build/release/testRun
+    export GENIE_REWEIGHT=/opt/Reweight
+    export LD_LIBRARY_PATH=$GENIE_REWEIGHT/lib:$LD_LIBRARY_PATH
+    export PATH=$GENIE_REWEIGHT/bin:$PATH
+

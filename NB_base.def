@@ -1,0 +1,43 @@
+Bootstrap: localimage
+From: genie.sif
+
+%arguments
+
+
+%files
+
+
+%post
+    apt -y update
+    apt -y install apt-utils
+    apt -y upgrade
+    apt -y autopurge
+
+    cd /opt
+
+    mkdir gibuu-build 
+
+    wget -q -c -t=999 https://gibuu.hepforge.org/downloads?f=release2023.tar.gz -O gibuu-build/release2023.tar.gz &
+    wget -q -c -t=999 https://gibuu.hepforge.org/downloads?f=buuinput2023.tar.gz -O gibuu-build/buuinput2023.tar.gz &
+    wget -q -c -t=999 https://gibuu.hepforge.org/downloads?f=libraries2023_RootTuple.tar.gz -O gibuu-build/libraries2023_RootTuple.tar.gz &
+
+    wait
+
+    cd gibuu-build
+    ls *.tar.gz |xargs -n1 tar -xf 
+    rm *.tar.gz
+
+    cd /opt
+    git clone https://github.com/NuWro/nuwro.git 
+
+    cd /opt
+    git clone https://github.com/GENIE-MC/Reweight.git
+%labels
+ 
+    
+
+%environment
+
+
+
+

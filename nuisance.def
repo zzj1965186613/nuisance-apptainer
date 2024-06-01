@@ -1,0 +1,35 @@
+Bootstrap: localimage
+From: nuisance_base.sif
+
+%arguments
+
+
+%files
+
+
+%post
+    apt -y update
+    apt -y install subversion
+    apt -y upgrade
+    apt -y autopurge
+
+    cd /opt/nuisance
+    mkdir build
+    cd build
+    export NUWRO=/opt/nuwro
+    export CC=/usr/bin/clang
+    export CXX=/usr/bin/clang++
+    cmake ../ -DNuWro_ENABLED=1 -DNEUT_ENABLED=0 -DGENIE_ENABLED=1 -DGiBUU_ENABLED=1 -DMINIMIZER_ENABLED=1  -DGENIE_REWEIGHT=/opt/Reweight/ -DNuWro=/opt/nuwro/ -DPYTHIA6_LIB_DIR=/opt/pythia6/v6_428/lib -DLHAPDF_LIB=/opt/lhapdf/lib -DGENIE=/opt/genie -DLOG4CPP_LIB=/usr/lib/x86_64-linux-gnu/
+    make install -j$(grep "processor" /proc/cpuinfo | sort | uniq | wc -l)
+    bash Linux/setup.sh
+    echo "bash /opt/nuisance/build/Linux/setup.sh" >> ~/.bashrc
+
+
+%labels
+    nuisance
+    
+
+%environment
+    export PATH=$PATH:/opt/nuisance/build/app
+    export NUWRO=/opt/nuwro
+    export NUISANCE=/opt/nuisance

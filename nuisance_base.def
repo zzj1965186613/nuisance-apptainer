@@ -1,0 +1,27 @@
+Bootstrap: localimage
+From: NB.sif
+
+%arguments
+
+
+%files
+
+
+%post
+    apt -y update
+    apt -y install apt-utils
+    apt -y upgrade
+    apt -y autopurge
+
+    cd /opt
+    git clone https://github.com/NUISANCEMC/nuisance.git
+
+%labels
+ 
+    
+
+%environment
+
+
+
+
