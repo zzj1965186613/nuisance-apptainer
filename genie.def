@@ -1,0 +1,144 @@
+Bootstrap: localimage
+From: genie_base.sif
+%arguments
+    DEBIAN_VERSION=trixie-slim
+    VECGEOM_VERSION=1.2.7
+    ROOT_VERSION=6.30.06
+%files
+	$(pwd)/data/include /opt
+    $(pwd)/data/LHAPDF /opt
+%post
+#apt-install
+    apt -y update
+    apt -y upgrade
+    apt -y autopurge
+    apt clean
+
+    cd /opt
+
+#vecgeom-install
+    cd vecgeom-build
+    mkdir build
+    cd build
+    cmake -G Ninja ../src/ -DCMAKE_INSTALL_PREFIX=/opt/vecgeom -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_STANDARD=17 -DCMAKE_CXX_STANDARD=20 -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DCMAKE_C_FLAGS='-march=ivybridge' -DCMAKE_CXX_FLAGS='-march=ivybridge' -DBUILD_SHARED_LIBS=OFF -DVECGEOM_VECTOR=avx -DVECGEOM_BACKEND=Vc -DVECGEOM_GDML=ON -DVECGEOM_FAST_MATH=ON -DTARGET_ARCHITECTURE=ivy-bridge
+    ninja
+    ninja install
+    cd ../..
+    rm -rf vecgeom-build
+
+    VECGEOM_DIR=/opt/vecgeom
+    export LIBRARY_PATH=$VECGEOM_DIR/lib:$LIBRARY_PATH
+    export LD_LIBRARY_PATH=$VECGEOM_DIR/lib:$LD_LIBRARY_PATH
+    export CMAKE_PREFIX_PATH=$VECGEOM_DIR:$CMAKE_PREFIX_PATH
+
+#lhapdf-install
+    cd lhapdf-build
+    mkdir build
+    cd build
+    ../src/configure --prefix=/opt/lhapdf
+    rm -rf include/LHAPDF
+    mv -f /opt/LHAPDF include/
+	make
+	make install
+    cd ../..
+    rm -rf lhapdf-build
+
+#pythia-install
+    cd pythia8-build
+    cd src
+    ./configure --prefix=/opt/pythia8 --with-mpich=/opt/mpich --with-mpich-lib=/opt/mpich/lib --with-mpich-include=/opt/mpich/include  --with-root=/opt/root --with-root-lib=/opt/root/lib --with-root-include=/opt/root/include --with-python-include=/usr/include/python3.11 --with-python-lib=/usr/lib/python3.11
+	make -j$(grep "processor" /proc/cpuinfo | sort | uniq | wc -l)
+	make install
+    cd /opt
+    rm -rf pythia8-build
+
+    mkdir pythia6
+    cp genie-build/Generator/src/scripts/build/ext/build_pythia6.sh /opt/pythia6
+    cd pythia6
+    bash build_pythia6.sh
+    rm /opt/pythia6/build_pythia6.sh
+
+#root-install
+    cd /opt
+    cd root-build
+    mkdir build
+    cd build
+    cmake -G Ninja ../src/ -DCMAKE_INSTALL_PREFIX=/opt/root -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_STANDARD=17 -DCMAKE_CXX_STANDARD=20 -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DCMAKE_C_FLAGS='-march=ivybridge' -DCMAKE_CXX_FLAGS='-march=ivybridge'  -Dpythia6=ON -DPYTHIA6_LIBRARY=/opt/pythia6/v6_428/lib/libPythia6.so -Dpythia8=ON -DPYTHIA8_LIBRARY=/opt/pythia8/lib/libpythia8.so -Dasimage=OFF -Dfftw3=ON -Dgviz=ON -Dimt=OFF -Dmathmore=ON -Dmpi=ON -Dopengl=OFF -Dunuran=OFF -During=ON -Dvecgeom=ON -Dx11=OFF -DTARGET_ARCHITECTURE=ivy-bridge
+    ninja
+    ninja install
+    cd ../..
+    rm -rf root-build
+    cp /opt/pythia6/v6_428/lib/libPythia6.so /opt/root/lib
+
+cp /opt/pythia6/v6_428/lib/libPythia6.so /opt/root/lib
+ln -s /opt/root/bin/root.exe /opt/root/bin/root
+
+#set environment
+    export PATH=/opt/root/bin:$PATH
+    export LIBRARY_PATH=/opt/vecgeom:/opt/root/lib:$LIBRARY_PATH
+    export LD_LIBRARY_PATH=/opt/vecgeom:/opt/root/lib:$LD_LIBRARY_PATH
+    export PYTHONPATH=/opt/root/lib:$PYTHONPATH
+    export MANPATH=/opt/root/man:$MANPATH
+    export CMAKE_PREFIX_PATH=/opt/vecgeom:/opt/root:$CMAKE_PREFIX_PATH
+    export JUPYTER_PATH=/opt/root/etc/notebook:$JUPYTER_PATH
+    export JUPYTER_CONFIG_DIR=/opt/root/etc/notebook:$JUPYTER_CONFIG_DIR
+    export ROOTSYS=/opt/root
+    export CLING_STANDARD_PCH=none
+    
+    export PATH=$PATH:/opt/lhapdf/bin
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/lhapdf/lib
+	export PYTHONPATH=$PYTHONPATH:/usr/lib/python3/dist-packages
+
+    export PYTHIA8_DIR=/opt/pythia8
+    export PATH=$PYTHIA8_DIR/bin:$PATH
+    export LIBRARY_PATH=$PYTHIA8_DIR/lib:$LIBRARY_PATH
+    export LD_LIBRARY_PATH=$PYTHIA8_DIR/lib:$LD_LIBRARY_PATH
+
+    export PATH=$PATH:/opt/genie/bin
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/genie/lib
+	export GENIE=/opt/genie-build/Generator/
+
+
+#genie-install
+    cd /opt/genie-build/Generator
+    cp -fr /opt/include /opt/lhapdf/
+    export GENIE=/opt/genie-build/Generator
+    export ROOTSYS=/opt/root
+    ./configure --prefix=/opt/genie --with-optimiz-level=O3 --disable-lhapdf5 --enable-lhapdf6 --enable-gfortran --with-pythia6-lib=/opt/pythia6/v6_428/lib/libPythia6.so  --with-lhapdf-lib=/opt/lhapdf/lib --with-lhapdf-inc=/opt/lhapdf/include  
+	gmake 
+	gmake install
+
+%labels
+    log4cpp5 1.1
+    gsl 2.7.1
+    lhapdf 6.5.4
+    pythia 8.3.12
+    pythia 6.4.28
+
+%environment
+    export PATH=/opt/root/bin:$PATH
+    export LIBRARY_PATH=/opt/vecgeom:/opt/root/lib:$LIBRARY_PATH
+    export LD_LIBRARY_PATH=/opt/vecgeom:/opt/root/lib:$LD_LIBRARY_PATH
+    export PYTHONPATH=/opt/root/lib:$PYTHONPATH
+    export MANPATH=/opt/root/man:$MANPATH
+    export CMAKE_PREFIX_PATH=/opt/vecgeom:/opt/root:$CMAKE_PREFIX_PATH
+    export JUPYTER_PATH=/opt/root/etc/notebook:$JUPYTER_PATH
+    export JUPYTER_CONFIG_DIR=/opt/root/etc/notebook:$JUPYTER_CONFIG_DIR
+    export ROOTSYS=/opt/root
+    export CLING_STANDARD_PCH=none
+    
+    export PATH=$PATH:/opt/lhapdf/bin
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/lhapdf/lib
+	export PYTHONPATH=$PYTHONPATH:/usr/lib/python3/dist-packages
+
+    export PYTHIA8_DIR=/opt/pythia8
+    export PATH=$PYTHIA8_DIR/bin:$PATH
+    export LIBRARY_PATH=$PYTHIA8_DIR/lib:$LIBRARY_PATH
+    export LD_LIBRARY_PATH=$PYTHIA8_DIR/lib:$LD_LIBRARY_PATH
+
+    export PATH=$PATH:/opt/genie/bin
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/genie/lib
+	export GENIE=/opt/genie-build/Generator/
+
+
+
